@@ -192,29 +192,191 @@ class ShoreSquad {
       console.error('Failed to load weather data:', error);
       this.renderWeatherError(weatherContainer);
     }
+  }  async fetchWeatherData() {
+    try {
+      // Get current weather data from NEA APIs
+      const [airTempData, humidityData, windData, weatherForecastData] = await Promise.all([
+        this.fetchNEAData('air-temperature'),
+        this.fetchNEAData('relative-humidity'),
+        this.fetchNEAData('wind-speed'),
+        this.fetchNEAData('weather-forecast')
+      ]);
+
+      const current = this.processCurrentWeather(airTempData, humidityData, windData);
+      const forecast = this.processWeatherForecast(weatherForecastData);
+
+      return {
+        current,
+        forecast
+      };
+    } catch (error) {
+      console.warn('Failed to fetch real weather data, using fallback:', error);
+      // Fallback to simulated data if API fails
+      return this.getFallbackWeatherData();
+    }
   }
-  async fetchWeatherData() {
-    // Simulated weather data - replace with real API
-    return new Promise(resolve => {
-      setTimeout(() => {
-        resolve({
-          current: {
-            temp: 24,
-            condition: 'Sunny',
-            humidity: 65,
-            windSpeed: 19,
-            icon: 'sun'
-          },
-          forecast: [
-            { day: 'Today', temp: 24, icon: 'sun', condition: 'Sunny' },
-            { day: 'Tomorrow', temp: 22, icon: 'cloud-sun', condition: 'Partly Cloudy' },
-            { day: 'Thu', temp: 20, icon: 'cloud', condition: 'Cloudy' },
-            { day: 'Fri', temp: 22, icon: 'sun', condition: 'Sunny' },
-            { day: 'Sat', temp: 23, icon: 'sun', condition: 'Perfect!' }
-          ]
+
+  async fetchNEAData(endpoint) {
+    const baseUrl = 'https://api.data.gov.sg/v1/environment';
+    const url = `${baseUrl}/${endpoint}`;
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`NEA API error: ${response.status} - ${response.statusText}`);
+    }
+    
+    return await response.json();
+  }
+
+  processCurrentWeather(airTempData, humidityData, windData) {
+    // Find Pasir Ris or nearest station to our beach location
+    const targetLat = 1.381497;
+    const targetLon = 103.955574;
+    
+    const nearestTempReading = this.findNearestStation(airTempData.items[0]?.readings || [], targetLat, targetLon);
+    const nearestHumidityReading = this.findNearestStation(humidityData.items[0]?.readings || [], targetLat, targetLon);
+    const nearestWindReading = this.findNearestStation(windData.items[0]?.readings || [], targetLat, targetLon);
+
+    const temp = nearestTempReading ? Math.round(nearestTempReading.value) : 28;
+    const humidity = nearestHumidityReading ? Math.round(nearestHumidityReading.value) : 70;
+    const windSpeed = nearestWindReading ? Math.round(nearestWindReading.value * 3.6) : 15; // Convert m/s to km/h
+
+    // Determine weather condition based on data
+    const condition = this.determineWeatherCondition(temp, humidity);
+    
+    return {
+      temp,
+      condition: condition.text,
+      humidity,
+      windSpeed,
+      icon: condition.icon
+    };
+  }
+
+  processWeatherForecast(weatherForecastData) {
+    const forecast = [];
+    const items = weatherForecastData.items || [];
+    
+    if (items.length > 0) {
+      const forecasts = items[0].forecasts || [];
+      const today = new Date();
+      
+      // Create 7-day forecast
+      for (let i = 0; i < Math.min(7, forecasts.length); i++) {
+        const forecastItem = forecasts[i];
+        const date = new Date(forecastItem.date);
+        
+        let dayLabel;
+        if (i === 0) {
+          dayLabel = 'Today';
+        } else if (i === 1) {
+          dayLabel = 'Tomorrow';
+        } else {
+          dayLabel = date.toLocaleDateString('en-US', { weekday: 'short' });
+        }
+
+        // Parse temperature from forecast text
+        const tempMatch = forecastItem.forecast.match(/(\d+)\s*to\s*(\d+)/);
+        let temp = 28; // fallback
+        if (tempMatch) {
+          temp = Math.round((parseInt(tempMatch[1]) + parseInt(tempMatch[2])) / 2);
+        }
+
+        const condition = this.parseWeatherCondition(forecastItem.forecast);
+        
+        forecast.push({
+          day: dayLabel,
+          temp,
+          icon: condition.icon,
+          condition: condition.text
         });
-      }, 1000);
+      }
+    }
+
+    // If no forecast data, generate reasonable defaults
+    if (forecast.length === 0) {
+      const days = ['Today', 'Tomorrow', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      for (let i = 0; i < 7; i++) {
+        forecast.push({
+          day: days[i] || `Day ${i + 1}`,
+          temp: 27 + Math.floor(Math.random() * 5),
+          icon: 'cloud-sun',
+          condition: 'Partly Cloudy'
+        });
+      }
+    }
+
+    return forecast;
+  }
+
+  findNearestStation(readings, targetLat, targetLon) {
+    if (!readings || readings.length === 0) return null;
+
+    let nearest = null;
+    let minDistance = Infinity;
+
+    readings.forEach(reading => {
+      if (reading.station_id && reading.value !== undefined) {
+        // For now, we'll use the first available reading
+        // TODO: Calculate actual distance if station coordinates are available
+        if (nearest === null) {
+          nearest = reading;
+        }
+      }
     });
+
+    return nearest;
+  }
+
+  determineWeatherCondition(temp, humidity) {
+    if (humidity < 50) {
+      return { text: 'Sunny', icon: 'sun' };
+    } else if (humidity > 80) {
+      return { text: 'Humid', icon: 'cloud' };
+    } else if (temp > 30) {
+      return { text: 'Hot & Sunny', icon: 'sun' };
+    } else {
+      return { text: 'Partly Cloudy', icon: 'cloud-sun' };
+    }
+  }
+
+  parseWeatherCondition(forecastText) {
+    const text = forecastText.toLowerCase();
+    
+    if (text.includes('rain') || text.includes('shower')) {
+      return { text: 'Rainy', icon: 'rain' };
+    } else if (text.includes('thunder') || text.includes('storm')) {
+      return { text: 'Thunderstorm', icon: 'storm' };
+    } else if (text.includes('cloud')) {
+      return { text: 'Cloudy', icon: 'cloud' };
+    } else if (text.includes('fair') || text.includes('sunny')) {
+      return { text: 'Sunny', icon: 'sun' };
+    } else {
+      return { text: 'Partly Cloudy', icon: 'cloud-sun' };
+    }
+  }
+
+  getFallbackWeatherData() {
+    // Enhanced fallback data with 7-day forecast
+    return {
+      current: {
+        temp: 28,
+        condition: 'Partly Cloudy',
+        humidity: 75,
+        windSpeed: 12,
+        icon: 'cloud-sun'
+      },
+      forecast: [
+        { day: 'Today', temp: 28, icon: 'cloud-sun', condition: 'Partly Cloudy' },
+        { day: 'Tomorrow', temp: 27, icon: 'cloud-sun', condition: 'Partly Cloudy' },
+        { day: 'Wed', temp: 29, icon: 'sun', condition: 'Sunny' },
+        { day: 'Thu', temp: 26, icon: 'cloud', condition: 'Cloudy' },
+        { day: 'Fri', temp: 28, icon: 'cloud-sun', condition: 'Fair' },
+        { day: 'Sat', temp: 30, icon: 'sun', condition: 'Sunny' },
+        { day: 'Sun', temp: 27, icon: 'cloud-sun', condition: 'Partly Cloudy' }
+      ]
+    };
   }
   renderWeatherWidget(data, currentContainer, forecastContainer) {
     // Render current weather
@@ -258,16 +420,28 @@ class ShoreSquad {
       </div>
     `;
   }
-
   getWeatherIcon(iconType) {
     const iconMap = {
       'sun': 'sun',
       'cloud': 'cloud',
       'cloud-sun': 'cloud-sun',
       'rain': 'cloud-rain',
-      'storm': 'bolt'
+      'storm': 'bolt',
+      'thunder': 'bolt',
+      'thunderstorm': 'bolt',
+      'shower': 'cloud-rain',
+      'drizzle': 'cloud-drizzle',
+      'mist': 'smog',
+      'fog': 'smog',
+      'clear': 'sun',
+      'fair': 'sun',
+      'sunny': 'sun',
+      'cloudy': 'cloud',
+      'overcast': 'cloud',
+      'partly-cloudy': 'cloud-sun',
+      'windy': 'wind'
     };
-    return iconMap[iconType] || 'sun';
+    return iconMap[iconType] || 'cloud-sun';
   }
 
   // ============================================

@@ -171,10 +171,9 @@ class ShoreSquad {
       );
     });
   }
-
   loadDefaultLocation() {
-    // Default to a coastal location (e.g., Santa Monica, CA)
-    this.state.currentLocation = { lat: 34.0195, lng: -118.4912 };
+    // Default to Singapore coastal location (Pasir Ris area)
+    this.state.currentLocation = { lat: 1.381497, lng: 103.955574 };
     this.loadWeatherData();
     this.loadNearbyBeaches();
   }
@@ -194,44 +193,42 @@ class ShoreSquad {
       this.renderWeatherError(weatherContainer);
     }
   }
-
   async fetchWeatherData() {
     // Simulated weather data - replace with real API
     return new Promise(resolve => {
       setTimeout(() => {
         resolve({
           current: {
-            temp: 75,
+            temp: 24,
             condition: 'Sunny',
             humidity: 65,
-            windSpeed: 12,
+            windSpeed: 19,
             icon: 'sun'
           },
           forecast: [
-            { day: 'Today', temp: 75, icon: 'sun', condition: 'Sunny' },
-            { day: 'Tomorrow', temp: 72, icon: 'cloud-sun', condition: 'Partly Cloudy' },
-            { day: 'Thu', temp: 68, icon: 'cloud', condition: 'Cloudy' },
-            { day: 'Fri', temp: 71, icon: 'sun', condition: 'Sunny' },
-            { day: 'Sat', temp: 74, icon: 'sun', condition: 'Perfect!' }
+            { day: 'Today', temp: 24, icon: 'sun', condition: 'Sunny' },
+            { day: 'Tomorrow', temp: 22, icon: 'cloud-sun', condition: 'Partly Cloudy' },
+            { day: 'Thu', temp: 20, icon: 'cloud', condition: 'Cloudy' },
+            { day: 'Fri', temp: 22, icon: 'sun', condition: 'Sunny' },
+            { day: 'Sat', temp: 23, icon: 'sun', condition: 'Perfect!' }
           ]
         });
       }, 1000);
     });
   }
-
   renderWeatherWidget(data, currentContainer, forecastContainer) {
     // Render current weather
     currentContainer.innerHTML = `
       <div class="current-weather-content">
         <div class="weather-main">
           <i class="fas fa-${this.getWeatherIcon(data.current.icon)}" aria-hidden="true"></i>
-          <div class="temp">${data.current.temp}°F</div>
+          <div class="temp">${data.current.temp}°C</div>
         </div>
         <div class="weather-details">
           <h3>${data.current.condition}</h3>
           <div class="weather-stats">
             <span><i class="fas fa-tint" aria-hidden="true"></i> ${data.current.humidity}%</span>
-            <span><i class="fas fa-wind" aria-hidden="true"></i> ${data.current.windSpeed} mph</span>
+            <span><i class="fas fa-wind" aria-hidden="true"></i> ${data.current.windSpeed} km/h</span>
           </div>
         </div>
       </div>
@@ -243,7 +240,7 @@ class ShoreSquad {
         <div class="forecast-day">
           <div class="forecast-date">${day.day}</div>
           <i class="fas fa-${this.getWeatherIcon(day.icon)}" aria-hidden="true"></i>
-          <div class="forecast-temp">${day.temp}°</div>
+          <div class="forecast-temp">${day.temp}°C</div>
           <div class="forecast-condition">${day.condition}</div>
         </div>
       `).join('');
@@ -288,33 +285,31 @@ class ShoreSquad {
       console.error('Failed to load nearby beaches:', error);
       this.renderLocationError(locationList);
     }
-  }
-
-  async fetchNearbyBeaches() {
+  }  async fetchNearbyBeaches() {
     // Simulated beach data - replace with real API
     return new Promise(resolve => {
       setTimeout(() => {
         resolve([
           {
             id: 1,
-            name: 'Santa Monica Beach',
-            distance: '2.1 miles',
+            name: 'Pasir Ris Beach',
+            distance: '0.5 km',
             cleanupScore: 85,
             nextEvent: '2 days',
             difficulty: 'Easy'
           },
           {
             id: 2,
-            name: 'Venice Beach',
-            distance: '3.4 miles',
+            name: 'East Coast Park',
+            distance: '12.8 km',
             cleanupScore: 72,
             nextEvent: '1 week',
             difficulty: 'Medium'
           },
           {
             id: 3,
-            name: 'Manhattan Beach',
-            distance: '5.2 miles',
+            name: 'Sentosa Beach',
+            distance: '28.5 km',
             cleanupScore: 91,
             nextEvent: '3 days',
             difficulty: 'Easy'

@@ -1,0 +1,21 @@
+{
+  "liveServer.settings.port": 5500,
+  "liveServer.settings.root": "./",
+  "liveServer.settings.CustomBrowser": "chrome",
+  "liveServer.settings.AdvanceCustomBrowserCmdLine": "",
+  "liveServer.settings.NoBrowser": false,
+  "liveServer.settings.ignoreFiles": [
+    ".vscode/**",
+    "**/*.scss",
+    "**/*.sass",
+    "**/*.ts"
+  ],
+  "liveServer.settings.donotShowInfoMsg": true,
+  "liveServer.settings.donotVerifyTags": true,
+  "liveServer.settings.mount": [],
+  "liveServer.settings.file": "index.html",
+  "liveServer.settings.wait": 100,
+  "liveServer.settings.fullReload": true,
+  "liveServer.settings.useLocalIp": false,
+  "liveServer.settings.useBrowserPreview": false
+}
